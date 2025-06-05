@@ -1,0 +1,129 @@
+{
+    "Toán": {
+        "questions": [
+            {
+                "question": "2 + 3 bằng bao nhiêu?",
+                "options": [
+                    "4",
+                    "5",
+                    "6",
+                    "7"
+                ],
+                "correct_answer": 1
+            },
+            {
+                "question": "Số nào nhỏ nhất?",
+                "options": [
+                    "1",
+                    "2",
+                    "3",
+                    "4"
+                ],
+                "correct_answer": 0
+            },
+            {
+                "question": "5 x 6 = ?",
+                "options": [
+                    "25",
+                    "30",
+                    "35",
+                    "40"
+                ],
+                "correct_answer": 1
+            }
+        ]
+    },
+    "Ngữ Văn / Tiếng Việt": {
+        "questions": [
+            {
+                "question": "Tác giả của truyện ngắn 'Dế Mèn phiêu lưu ký' là ai?",
+                "options": [
+                    "Nguyễn Du",
+                    "Tô Hoài",
+                    "Nam Cao",
+                    "Ngô Tất Tố"
+                ],
+                "correct_answer": 1
+            },
+            {
+                "question": "Truyện cổ tích 'Tấm Cám' có nhân vật chính là ai?",
+                "options": [
+                    "Tấm",
+                    "Cám",
+                    "Mẹ Cám",
+                    "Ông Bụt"
+                ],
+                "correct_answer": 0
+            }
+        ]
+    },
+    "Tiếng Anh": {
+        "questions": [
+            {
+                "question": "What is the capital of England?",
+                "options": [
+                    "Paris",
+                    "London",
+                    "Berlin",
+                    "Rome"
+                ],
+                "correct_answer": 1
+            },
+            {
+                "question": "How do you say 'con chó' in English?",
+                "options": [
+                    "Dog",
+                    "Cat",
+                    "Fish",
+                    "Bird"
+                ],
+                "correct_answer": 0
+            }
+        ]
+    },
+    "Lịch sử": {
+        "questions": [
+            {
+                "question": "Ai là vị vua đầu tiên của nước Việt Nam?",
+                "options": [
+                    "Lý Thái Tổ",
+                    "Quang Trung",
+                    "Ngô Quyền",
+                    "Hùng Vương"
+                ],
+                "correct_answer": 3
+            }
+        ]
+    },
+    "Địa lý": {
+        "questions": [
+            {
+                "question": "Sông nào dài nhất Việt Nam?",
+                "options": [
+                    "Sông Hồng",
+                    "Sông Đồng Nai",
+                    "Sông Mê Kông",
+                    "Sông Cửu Long"
+                ],
+                "correct_answer": 2
+            }
+        ]
+    },
+    "Khoa học": {
+        "questions": [
+            {
+                "question": "Hành tinh nào trong hệ Mặt Trời gần Mặt Trời nhất?",
+                "options": [
+                    "Sao Kim",
+                    "Sao Thủy",
+                    "Sao Hỏa",
+                    "Sao Mộc"
+                ],
+                "correct_answer": 1
+            }
+        ]
+    },
+    "Tiếng Việt / Ngữ Văn": {
+        "questions": []
+    }
+}
