@@ -1,14 +1,28 @@
 {
     "users": [
         {
-            "email": "administrator",
+            "email": "administrator@example.com",
+            "username": "administrator",
             "password": "administrator",
-            "admin": true
+            "admin": true,
+            "teacher": false,
+            "student": false
         },
         {
             "email": "example@example.com",
+            "username": "example",
             "password": "1234",
-            "admin": false
+            "admin": false,
+            "teacher": false,
+            "student": true
+        },
+        {
+            "email": "teacher@example.com",
+            "username": "teacher",
+            "password": "teacher",
+            "admin": false,
+            "teacher": true,
+            "student": false
         }
     ]
 }
