@@ -1,41 +1,110 @@
 import flet as ft
-import json
 import subprocess
 import sys
+import os
+from supabase import create_client, Client
+from dotenv import load_dotenv
 
-LOGIN_FILE = "json/login_info.json"
+# Load environment variables
+load_dotenv("./.secret/.env")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-def load_users():
+def initialize_database():
+    """Create users table if it doesn't exist and add sample users"""
     try:
-        with open(LOGIN_FILE, "r", encoding="utf-8") as f:
-            return json.load(f).get("users", [])
-    except FileNotFoundError:
-        return []
+        # Create users table if not exists
+        create_table_sql = """
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            email TEXT NOT NULL UNIQUE,
+            username TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL,
+            admin BOOLEAN NOT NULL DEFAULT false,
+            teacher BOOLEAN NOT NULL DEFAULT false,
+            student BOOLEAN NOT NULL DEFAULT true
+        );
+        """
+        supabase.raw(create_table_sql).execute()
+        
+        # Create sample users
+        sample_users = [
+            {
+                "email": "administrator@example.com",
+                "username": "administrator",
+                "password": "administrator",
+                "admin": True,
+                "teacher": False,
+                "student": False
+            },
+            {
+                "email": "example@example.com",
+                "username": "example",
+                "password": "1234",
+                "admin": False,
+                "teacher": False,
+                "student": True
+            },
+            {
+                "email": "teacher@example.com",
+                "username": "teacher",
+                "password": "teacher",
+                "admin": False,
+                "teacher": True,
+                "student": False
+            }
+        ]
+        
+        for user in sample_users:
+            # Upsert users (insert if not exists)
+            supabase.table("users").upsert(user).execute()
+            
     except Exception as e:
-        print(f"Error loading users: {e}")
-        return []
+        print(f"Database initialization error: {e}")
 
-def save_users(users):
+# Initialize database on startup
+initialize_database()
+
+def authenticate(identifier, password):
+    """Authenticate user using email or username"""
     try:
-        with open(LOGIN_FILE, "w", encoding="utf-8") as f:
-            json.dump({"users": users}, f, indent=4)
+        # Query for email match
+        email_res = supabase.table("users").select("*").eq("email", identifier).eq("password", password).execute()
+        if email_res.data:
+            return email_res.data[0]
+        
+        # Query for username match
+        username_res = supabase.table("users").select("*").eq("username", identifier).eq("password", password).execute()
+        if username_res.data:
+            return username_res.data[0]
+            
+        return None
     except Exception as e:
-        print(f"Error saving users: {e}")
+        print(f"Authentication error: {e}")
+        return None
 
-users = load_users()
-
-def authenticate(email, password):
-    for user in users:
-        if user.get("email") == email and user.get("password") == password:
-            return user.get("admin", False)  # Default to False if 'admin' is not present
-    return None
-
-def register_user(email, password, admin=False):
-    if any(user.get("email") == email for user in users):
-        return False  # Email already exists
-    users.append({"email": email, "password": password, "admin": admin})
-    save_users(users)
-    return True
+def register_user(email, password):
+    """Register new user with student role by default"""
+    try:
+        # Check if email or username exists
+        existing = supabase.table("users").select("*").or_(f"email.eq.{email},username.eq.{email}").execute()
+        if existing.data:
+            return False
+            
+        new_user = {
+            "email": email,
+            "username": email,  # Use email as username
+            "password": password,
+            "admin": False,
+            "teacher": False,
+            "student": True
+        }
+        supabase.table("users").insert(new_user).execute()
+        return True
+    except Exception as e:
+        print(f"Registration error: {e}")
+        return False
 
 def toggle_password_visibility(e):
     password_field.password = not password_field.password
@@ -44,15 +113,17 @@ def toggle_password_visibility(e):
     show_password_button.update()
 
 def login(e, page):
-    email = email_field.value.strip()
+    identifier = email_field.value.strip()
     password = password_field.value.strip()
     
-    admin_status = authenticate(email, password)
-    if admin_status is not None:
-        if admin_status == True:
+    user = authenticate(identifier, password)
+    if user:
+        if user.get("admin"):
             subprocess.Popen([sys.executable, "administrator/administrator_main.py"])
+        elif user.get("teacher"):
+            subprocess.Popen([sys.executable, "teacher/teacher_main.py"])
         else:
-            subprocess.Popen([sys.executable, "other_code/main_windows.py"])
+            subprocess.Popen([sys.executable, "student/student_main.py"])
         page.window.close()
     else:
         login_status.value = "Tài khoản hoặc mật khẩu không chính xác!"
@@ -63,14 +134,14 @@ def register(e, page):
     password = password_field.value.strip()
     
     if register_user(email, password):
-        login_status.value = "Tài khoản đã được tạo thành công! Bạn có thể đăng nhập bây giờ."
+        login_status.value = "Tài khoản đã được tạo thành công! Bạn có thể đăng nhập ngay bây giờ."
         login_status.color = "green"
     else:
         login_status.value = "Email / Username đã tồn tại!"
         login_status.color = "red"
     login_status.update()
 
-# UI Elements with dark theme styling
+# UI Elements
 email_field = ft.TextField(
     label="E-mail / Username",
     width=300,
@@ -119,7 +190,7 @@ def main(page: ft.Page):
     )
     
     register_button = ft.TextButton(
-        "Đăng ký tài khoản (nhập vào ô trên)",
+        "Đăng ký tài khoản (nhập vào trên)",
         on_click=lambda e: register(e, page),
         style=ft.ButtonStyle(color="#3B71CA")
     )

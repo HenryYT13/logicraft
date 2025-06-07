@@ -1,49 +1,18 @@
+# add_question.py
 import flet as ft
-import json
 import os
 import subprocess
 import sys
-
-def save_question_to_file(subject, question, answers, correct_index):
-    print(f"Saving - Subject: {subject}, Question: {question}, Answers: {answers}, Correct Index: {correct_index}")  # Debugging
-
-    if not question.strip() or not all(answers) or correct_index is None or correct_index < 0 or correct_index >= len(answers):
-        print("Invalid question data! Skipping save.")
-        return
-
-    file_path = "json/questions.json"
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
-    question_data = {
-        "question": question,
-        "options": answers,
-        "correct_answer": correct_index
-    }
-
-    if os.path.exists(file_path):
-        with open(file_path, "r", encoding="utf-8") as file:
-            try:
-                data = json.load(file)
-            except json.JSONDecodeError:
-                data = {}
-    else:
-        data = {}
-
-    if subject not in data:
-        data[subject] = {"questions": []}
-
-    data[subject]["questions"].append(question_data)
-
-    with open(file_path, "w", encoding="utf-8") as file:
-        json.dump(data, file, indent=4, ensure_ascii=False)
-
-    print(f"Added question: {question_data}")  # Final Debugging
+from .secret import db_interaction  # Import the database interaction module
 
 def main(page: ft.Page):
-    page.title = "Administrator Screen"
+    page.title = "Adding Question"
     page.padding = 40  # Adding padding around the content
     
-    subjects = ["Toán", "Khoa học", "Lịch sử", "Địa lý", "Tiếng Anh", "Tiếng Việt / Ngữ Văn"]
+    # Load subjects from database
+    subjects_data = db_interaction.get_all_subjects()
+    subjects = [subj["name"] for subj in subjects_data]
+    
     subject_dropdown = ft.Dropdown(
         options=[ft.dropdown.Option(subj) for subj in subjects],
         label="Chọn môn học",
@@ -64,7 +33,7 @@ def main(page: ft.Page):
         page.window.close()
         subprocess.run([sys.executable, "administrator/administrator_main.py"])
 
-    def add_question(e):
+    def add_question_to_db(e):
         if not subject_dropdown.value or not question_input.value.strip():
             print("Môn học hoặc câu hỏi không được để trống!")
             return
@@ -83,23 +52,42 @@ def main(page: ft.Page):
             print("Chọn đáp án đúng không hợp lệ!")
             return
         
-        save_question_to_file(subject_dropdown.value, question_input.value, answers, correct_index)
-        
-        question_entry = ft.Text(
-            f"{subject_dropdown.value}: {question_input.value} \n"
-            f"Đáp án: {', '.join(answers)} \nĐáp án đúng: {answers[correct_index]}"
+        # Find subject ID
+        subject_id = next(
+            (subj["id"] for subj in subjects_data if subj["name"] == subject_dropdown.value),
+            None
         )
         
-        question_list.controls.append(question_entry)
-        page.update()
+        if subject_id is None:
+            print("Môn học không tồn tại!")
+            return
         
-        question_input.value = ""
-        for inp in answer_inputs:
-            inp.value = ""
-        correct_answer_dropdown.value = None
-        page.update()
+        # Add to database
+        success = db_interaction.add_question(
+            subject_id,
+            question_input.value,
+            answers,
+            correct_index
+        )
+        
+        if success:
+            question_entry = ft.Text(
+                f"{subject_dropdown.value}: {question_input.value} \n"
+                f"Đáp án: {', '.join(answers)} \nĐáp án đúng: {answers[correct_index]}"
+            )
+            
+            question_list.controls.append(question_entry)
+            page.update()
+            
+            question_input.value = ""
+            for inp in answer_inputs:
+                inp.value = ""
+            correct_answer_dropdown.value = None
+            page.update()
+        else:
+            print("Lỗi khi thêm câu hỏi vào cơ sở dữ liệu!")
     
-    submit_button = ft.ElevatedButton("Thêm câu hỏi", on_click=add_question)
+    submit_button = ft.ElevatedButton("Thêm câu hỏi", on_click=add_question_to_db)
     back_button = ft.ElevatedButton("Quay lại", on_click=lambda e: back_code(e))
     
     page.add(  # Thêm nút quay lại

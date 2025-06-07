@@ -1,4 +1,3 @@
-import flet as ft
 import asyncio
 import threading
 import time
@@ -6,17 +5,16 @@ import pygame
 import json
 import subprocess
 import sys
+import os
+from supabase import create_client, Client
+from dotenv import load_dotenv
+import flet as ft
 
-def load_questions():
-    try:
-        with open('json/questions.json', 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"Error loading questions: {e}")
-        return {}
-
-# Load questions from JSON file
-quizzes = load_questions()
+# Load environment variables
+load_dotenv("./.secret/.env")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
 async def main(page: ft.Page):
     page.title = "Logicraft"
@@ -34,6 +32,10 @@ async def main(page: ft.Page):
     page.data["sound_effects"] = {}
     page.data["mixer_initialized"] = False
     page.data["is_muted"] = False  # Initialize mute state
+    
+    # Get user ID from environment (set during login)
+    page.data["user_id"] = os.getenv("CURRENT_USER_ID")
+    print(f"Current user ID: {page.data['user_id']}")
 
     def open_info(e):
         page.window.close()
@@ -114,6 +116,7 @@ async def main(page: ft.Page):
                 page.data["mixer_initialized"] = False
         except Exception as e:
             print(f"Error stopping background music: {e}")
+    
     def feedback(e):
         page.window.close()
         subprocess.run([sys.executable, "./other_code/feedback.py"])
@@ -123,9 +126,74 @@ async def main(page: ft.Page):
     # Load sound effects when the app starts
     load_sound_effects()
 
+    # Fixed subjects as fallback
+    DEFAULT_SUBJECTS = ["Toán", "Ngữ Văn / Tiếng Việt", "Tiếng Anh", "Lịch sử", "Địa lý", "Khoa học"]
+    
+    # Fetch subjects from Supabase with fallback
+    def fetch_subjects():
+        try:
+            if supabase:
+                response = supabase.table("subjects").select("*").execute()
+                if response.data:
+                    return [subject["name"] for subject in response.data]
+            return DEFAULT_SUBJECTS
+        except Exception as e:
+            print(f"Error fetching subjects: {e}")
+            return DEFAULT_SUBJECTS
+
+    # Fixed questions as fallback
+    DEFAULT_QUESTIONS = {
+        "Toán": [
+            {
+                "question": "2 + 2 = ?",
+                "options": ["3", "4", "5", "6"],
+                "correct_answer": 1
+            },
+            {
+                "question": "5 × 3 = ?",
+                "options": ["8", "10", "15", "20"],
+                "correct_answer": 2
+            }
+        ],
+        "Ngữ Văn / Tiếng Việt": [
+            {
+                "question": "Từ nào viết đúng chính tả?",
+                "options": ["giàn dụa", "dàn giụa", "giàn giụa", "dàn dụa"],
+                "correct_answer": 2
+            }
+        ],
+        "Tiếng Anh": [
+            {
+                "question": "Apple nghĩa là gì?",
+                "options": ["Quả cam", "Quả táo", "Quả chuối", "Quả lê"],
+                "correct_answer": 1
+            }
+        ]
+    }
+    
+    # Fetch questions for a subject from Supabase with fallback
+    async def fetch_questions(subject):
+        try:
+            if supabase:
+                response = supabase.table("questions").select("*").eq("subject", subject).execute()
+                if response.data:
+                    return [{
+                        "question": q["question_text"],
+                        "options": [q[f"option_{i+1}"] for i in range(4)],
+                        "correct_answer": q["correct_option"] - 1
+                    } for q in response.data]
+            
+            # Return default questions if no database connection or no questions
+            return DEFAULT_QUESTIONS.get(subject, [])
+        except Exception as e:
+            print(f"Error fetching questions: {e}")
+            return DEFAULT_QUESTIONS.get(subject, [])
+
     # Tạo view chọn môn học
     def main_view():
         start_background_music()  # Start background music when main view is shown
+        subjects = fetch_subjects()
+        
         return ft.Column(
             [
                 ft.Row(
@@ -167,7 +235,7 @@ async def main(page: ft.Page):
                         on_click=lambda e, s=subject: page.run_task(start_quiz, e, s),
                         width=300,
                         height=50
-                    ) for subject in quizzes.keys()],
+                    ) for subject in subjects],
                     spacing=10,
                     alignment=ft.MainAxisAlignment.CENTER
                 )
@@ -182,6 +250,18 @@ async def main(page: ft.Page):
         page.data["current_subject"] = subject
         page.data["current_question_index"] = 0
         page.data["score"] = 0
+        page.data["questions"] = await fetch_questions(subject)
+        
+        # Handle case where no questions are available
+        if not page.data["questions"]:
+            page.snack_bar = ft.SnackBar(
+                ft.Text(f"Không tìm thấy câu hỏi cho môn {subject}!"),
+                bgcolor="red"
+            )
+            page.snack_bar.open = True
+            page.update()
+            return
+            
         await show_question()
 
     def logout(e):
@@ -190,9 +270,8 @@ async def main(page: ft.Page):
     
     # Hiển thị câu hỏi
     async def show_question():
-        subject = page.data["current_subject"]
         current_index = page.data["current_question_index"]
-        questions = quizzes[subject]["questions"]
+        questions = page.data["questions"]
         
         if current_index >= len(questions):
             stop_background_music()  # Stop background music when quiz ends
@@ -286,7 +365,7 @@ async def main(page: ft.Page):
                         ),
                         ft.ElevatedButton(
                             "Đăng xuất",
-                            on_click=return_to_main,
+                            on_click=logout,
                             width=150,
                             height=40,
                             bgcolor="grey",
@@ -296,7 +375,7 @@ async def main(page: ft.Page):
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     width=400
                 ),
-                ft.Text(f"Môn: {subject}", size=20, weight="bold"),
+                ft.Text(f"Môn: {page.data['current_subject']}", size=20, weight="bold"),
                 ft.Text(f"Câu {current_index + 1}/{len(questions)}", italic=True),
                 ft.Text(question["question"], size=24, weight="bold"),
                 ft.Text(f"Điểm: {page.data['score']}", size=16),
@@ -313,12 +392,16 @@ async def main(page: ft.Page):
     # Hiển thị kết quả
     async def show_result():
         score = page.data["score"]
-        total = len(quizzes[page.data["current_subject"]]["questions"])
+        total = len(page.data["questions"])
+        
+        # Handle division by zero
+        progress_value = score / total if total > 0 else 0
+
         view = ft.Column(
             [
                 ft.Text("KẾT THÚC BÀI THI", size=30, weight="bold"),
                 ft.Text(f"Bạn đã đúng {score}/{total} câu!", size=24),
-                ft.ProgressRing(width=100, height=100, value=score/total),
+                ft.ProgressRing(width=100, height=100, value=progress_value),
                 ft.ElevatedButton(
                     "Về màn hình chính",
                     on_click=return_to_main,
