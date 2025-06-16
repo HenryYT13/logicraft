@@ -19,6 +19,7 @@ os.system("pip install subprocess")
 os.system("pip install tkinter")
 os.system("pip install requests")
 os.system("pip install datetime")
+os.system("pip install supabase")
 
 cls_s()
 
