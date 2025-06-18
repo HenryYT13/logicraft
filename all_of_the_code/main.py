@@ -31,7 +31,7 @@ def initialize_database():
         # Create sample users
         sample_users = [
             {
-                "email": "administrator@example.com",
+                "email": "administrator@logicraft.vn",
                 "username": "administrator",
                 "password": "administrator",
                 "admin": True,
@@ -39,7 +39,7 @@ def initialize_database():
                 "student": False
             },
             {
-                "email": "example@example.com",
+                "email": "example@elogicraft.vn",
                 "username": "example",
                 "password": "1234",
                 "admin": False,
@@ -47,12 +47,20 @@ def initialize_database():
                 "student": True
             },
             {
-                "email": "teacher@example.com",
+                "email": "teacher@logicraft.vn",
                 "username": "teacher",
                 "password": "teacher",
                 "admin": False,
                 "teacher": True,
                 "student": False
+            },
+            {
+                "email": "student@logicraft.vn",
+                "username": "student",
+                "password": "student_password",
+                "admin": False,
+                "teacher": False,
+                "student": True
             }
         ]
         
