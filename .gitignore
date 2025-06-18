@@ -1,0 +1,3 @@
+# ignore bc its git ignore
+./all_of_the_code/.secret
+.venv
