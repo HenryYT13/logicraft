@@ -135,11 +135,11 @@ async def main(page: ft.Page):
             if supabase:
                 response = supabase.table("subjects").select("*").execute()
                 if response.data:
-                    return [subject["name"] for subject in response.data]
-            return DEFAULT_SUBJECTS
+                    return response.data  # Return full subject data including id and name
+            return [{"id": i+1, "name": subject} for i, subject in enumerate(DEFAULT_SUBJECTS)]
         except Exception as e:
             print(f"Error fetching subjects: {e}")
-            return DEFAULT_SUBJECTS
+            return [{"id": i+1, "name": subject} for i, subject in enumerate(DEFAULT_SUBJECTS)]
 
     # Fixed questions as fallback
     DEFAULT_QUESTIONS = {
@@ -172,22 +172,23 @@ async def main(page: ft.Page):
     }
     
     # Fetch questions for a subject from Supabase with fallback
-    async def fetch_questions(subject):
+    async def fetch_questions(subject_name, subject_id=None):
         try:
-            if supabase:
-                response = supabase.table("questions").select("*").eq("subject", subject).execute()
+            if supabase and subject_id:
+                # Query by subject_id instead of subject name
+                response = supabase.table("questions").select("*").eq("subject_id", subject_id).execute()
                 if response.data:
                     return [{
                         "question": q["question_text"],
                         "options": [q[f"option_{i+1}"] for i in range(4)],
-                        "correct_answer": q["correct_option"] - 1
+                        "correct_answer": int(q["correct_option"]) - 1  # Convert to 0-based index
                     } for q in response.data]
             
             # Return default questions if no database connection or no questions
-            return DEFAULT_QUESTIONS.get(subject, [])
+            return DEFAULT_QUESTIONS.get(subject_name, [])
         except Exception as e:
             print(f"Error fetching questions: {e}")
-            return DEFAULT_QUESTIONS.get(subject, [])
+            return DEFAULT_QUESTIONS.get(subject_name, [])
 
     # Tạo view chọn môn học
     def main_view():
@@ -231,7 +232,7 @@ async def main(page: ft.Page):
                 ft.Text("CHỌN MÔN HỌC", size=30, weight="bold"),
                 ft.Column(
                     [ft.ElevatedButton(
-                        subject,
+                        subject["name"],
                         on_click=lambda e, s=subject: page.run_task(start_quiz, e, s),
                         width=300,
                         height=50
@@ -247,15 +248,15 @@ async def main(page: ft.Page):
 
     # Bắt đầu làm bài
     async def start_quiz(e, subject):
-        page.data["current_subject"] = subject
+        page.data["current_subject"] = subject["name"]
         page.data["current_question_index"] = 0
         page.data["score"] = 0
-        page.data["questions"] = await fetch_questions(subject)
+        page.data["questions"] = await fetch_questions(subject["name"], subject["id"])
         
         # Handle case where no questions are available
         if not page.data["questions"]:
             page.snack_bar = ft.SnackBar(
-                ft.Text(f"Không tìm thấy câu hỏi cho môn {subject}!"),
+                ft.Text(f"Không tìm thấy câu hỏi cho môn {subject['name']}!"),
                 bgcolor="red"
             )
             page.snack_bar.open = True
@@ -391,6 +392,27 @@ async def main(page: ft.Page):
     
     # Hiển thị kết quả
     async def show_result():
+        score = page.data["score"]
+        total = len(page.data["questions"])
+
+        # Save score to database
+        try:
+            if supabase and page.data.get("user_id"):
+                # Get subject id
+                subj_res = supabase.table("subjects").select("id").eq("name", page.data["current_subject"]).single().execute()
+                if subj_res.data:
+                    subject_id = subj_res.data["id"]
+                    supabase.table("scores").upsert({
+                        "user_id": page.data["user_id"],
+                        "subject_id": subject_id,
+                        "score": score,
+                        "updated_at": "now()"  # let supabase server set timestamp
+                    }).execute()
+        except Exception as e:
+            print(f"Error saving score: {e}")
+
+        # Handle division by zero
+        progress_value = score / total if total > 0 else 0
         score = page.data["score"]
         total = len(page.data["questions"])
         

@@ -2,6 +2,7 @@ import flet as ft
 import subprocess
 import sys
 import os
+import tempfile
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -21,12 +22,36 @@ def initialize_database():
             email TEXT NOT NULL UNIQUE,
             username TEXT NOT NULL UNIQUE,
             password TEXT NOT NULL,
-            admin BOOLEAN NOT NULL DEFAULT false,
-            teacher BOOLEAN NOT NULL DEFAULT false,
-            student BOOLEAN NOT NULL DEFAULT true
+            is_admin BOOLEAN NOT NULL DEFAULT false,
+            is_teacher BOOLEAN NOT NULL DEFAULT false,
+            is_student BOOLEAN NOT NULL DEFAULT true
         );
         """
-        supabase.raw(create_table_sql).execute()
+        if hasattr(supabase, "raw"):
+            try:
+                supabase.raw(create_table_sql).execute()
+            except Exception as err:
+                print(f"Table creation failed via raw(): {err}")
+        else:
+            print("supabase.raw() not available in this client version – ensure tables are created manually.")
+        # Create scores table if not exists
+        create_scores_sql = """
+        CREATE TABLE IF NOT EXISTS scores (
+            id SERIAL PRIMARY KEY,
+            user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+            subject_id INT,
+            score INT DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (user_id, subject_id)
+        );
+        """
+        if hasattr(supabase, "raw"):
+            try:
+                supabase.raw(create_scores_sql).execute()
+            except Exception as err:
+                print(f"Scores table creation failed via raw(): {err}")
+        else:
+            print("supabase.raw() not available – skipping scores table creation.")
         
         # Create sample users
         sample_users = [
@@ -34,25 +59,25 @@ def initialize_database():
                 "email": "administrator@logicraft.vn",
                 "username": "administrator",
                 "password": "administrator",
-                "admin": True,
-                "teacher": False,
-                "student": False
+                "is_admin": True,
+                "is_teacher": False,
+                "is_student": False
             },
             {
                 "email": "example@elogicraft.vn",
                 "username": "example",
                 "password": "1234",
-                "admin": False,
-                "teacher": False,
-                "student": True
+                "is_admin": False,
+                "is_teacher": False,
+                "is_student": True
             },
             {
                 "email": "teacher@logicraft.vn",
                 "username": "teacher",
                 "password": "teacher",
-                "admin": False,
-                "teacher": True,
-                "student": False
+                "is_admin": False,
+                "is_teacher": True,
+                "is_student": False
             },
             {
                 "email": "student@logicraft.vn",
@@ -108,11 +133,38 @@ def register_user(email, password):
             "teacher": False,
             "student": True
         }
-        supabase.table("users").insert(new_user).execute()
+        insert_res = supabase.table("users").insert(new_user).execute()
+        # Initialize score rows for the new user
+        user_id = None
+        if insert_res.data:
+            user_id = insert_res.data[0].get("id")
+        else:
+            res = supabase.table("users").select("id").eq("email", email).single().execute()
+            if res.data:
+                user_id = res.data.get("id")
+        if user_id:
+            try:
+                subjects_res = supabase.table("subjects").select("id").execute()
+                if subjects_res.data:
+                    score_rows = [{"user_id": user_id, "subject_id": subj["id"], "score": 0} for subj in subjects_res.data]
+                    supabase.table("scores").upsert(score_rows).execute()
+            except Exception as e:
+                print(f"Error initializing scores: {e}")
         return True
     except Exception as e:
         print(f"Registration error: {e}")
         return False
+
+def save_current_user_id(user_id: str):
+    """Write the current user's UUID to a temp file so that other processes can read it."""
+    try:
+        temp_path = os.path.join(tempfile.gettempdir(), "logicraft_current_user_id")
+        with open(temp_path, "w", encoding="utf-8") as f:
+
+            f.write(user_id)
+    except Exception as e:
+        print(f"Error saving current user ID: {e}")
+
 
 def toggle_password_visibility(e):
     password_field.password = not password_field.password
@@ -126,12 +178,17 @@ def login(e, page):
     
     user = authenticate(identifier, password)
     if user:
-        if user.get("admin"):
-            subprocess.Popen([sys.executable, "administrator/administrator_main.py"])
-        elif user.get("teacher"):
-            subprocess.Popen([sys.executable, "teacher/teacher_main.py"])
+        # Save current user ID for downstream processes
+        env = os.environ.copy()
+        env["CURRENT_USER_ID"] = str(user.get("id"))
+        save_current_user_id(env["CURRENT_USER_ID"])
+
+        if user.get("is_admin"):
+            subprocess.Popen([sys.executable, os.path.join("user_code", "administrator", "administrator_main.py")], env=env)
+        elif user.get("is_teacher"):
+            subprocess.Popen([sys.executable, os.path.join("user_code", "teacher", "teacher_main.py")], env=env)
         else:
-            subprocess.Popen([sys.executable, "student/student_main.py"])
+            subprocess.Popen([sys.executable, os.path.join("user_code", "student", "student_main.py")], env=env)
         page.window.close()
     else:
         login_status.value = "Tài khoản hoặc mật khẩu không chính xác!"

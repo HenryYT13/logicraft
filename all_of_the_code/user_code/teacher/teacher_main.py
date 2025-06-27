@@ -13,7 +13,7 @@ def main(page: ft.Page):
     page.bgcolor = "#0F1115"
     page.padding = 20
 
-    title = ft.Text("Menu dành cho Admin", size=24, weight="bold", color="white")
+    title = ft.Text("Menu dành cho Giáo Viên", size=24, weight="bold", color="white")
     
     def logout(e):
         page.window.close()
@@ -29,12 +29,13 @@ def main(page: ft.Page):
         subprocess.run([sys.executable, "other_code/feedback.py"])
     def student_score(e):
         page.window.close()
-        subprocess.run([sys.executable, "teacher/student_score.py"])
+        subprocess.run([sys.executable, "./user_code/teacher/other_teacher_code/student_score.py"])
 
     buttons = ft.Column(
         [
             ft.ElevatedButton("Tạo câu hỏi", on_click=lambda e: create_question(e)),
             ft.ElevatedButton("Xóa câu hỏi", on_click=lambda e: delete_question(e)),
+            ft.ElevatedButton("Xem điểm học sinh", on_click=lambda e: student_score(e)),
             ft.ElevatedButton("Feedback", on_click=lambda e: feedback(e)),
             ft.ElevatedButton("Đăng xuất", on_click=lambda e: logout(e)),
         ],
