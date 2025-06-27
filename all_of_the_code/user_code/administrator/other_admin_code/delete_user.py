@@ -1,61 +1,144 @@
 import flet as ft
-import json
-import os
 import subprocess
 import sys
+import os
+from supabase import create_client, Client
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv("./.secret/.env")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def load_users():
-    file_path = "json/login_info.json"
-    if os.path.exists(file_path):
-        with open(file_path, "r", encoding="utf-8") as file:
-            try:
-                data = json.load(file)
-                return data.get("users", [])
-            except json.JSONDecodeError:
-                return []
-    return []
+    """Load all users from Supabase database"""
+    try:
+        response = supabase.table("users").select("*").execute()
+        return response.data if response.data else []
+    except Exception as e:
+        print(f"Error loading users: {e}")
+        return []
 
-def save_users(users):
-    file_path = "json/login_info.json"
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
-    with open(file_path, "w", encoding="utf-8") as file:
-        json.dump({"users": users}, file, indent=4, ensure_ascii=False)
+def delete_user_from_db(user_email):
+    """Delete user from Supabase database"""
+    try:
+        # Delete the user with the specified email
+        response = supabase.table("users").delete().eq("email", user_email).execute()
+        return True
+    except Exception as e:
+        print(f"Error deleting user: {e}")
+        return False
 
 def main(page: ft.Page):
     page.title = "Xóa người dùng"
     page.padding = 40
+    page.bgcolor = "#0F1115"  # Match the dark theme from login
     
     users = load_users()
     user_dropdown = ft.Dropdown(
         options=[ft.dropdown.Option(user["email"]) for user in users],
         label="Chọn người dùng để xóa",
         width=300,
+        bgcolor="#161920",
+        color="white",
+        border_color="#161920",
+        focused_border_color="#3B71CA",
+        label_style=ft.TextStyle(color="#6C757D")
     )
     status_text = ft.Text("", color="red")
     
     def back_code(e):
         page.window.close()
-        subprocess.run([sys.executable, "administrator/administrator_main.py"])
+        subprocess.run([sys.executable, "user_code/administrator/administrator_main.py"])
 
     def delete_user(e):
         selected_email = user_dropdown.value
         if not selected_email:
             status_text.value = "Vui lòng chọn một người dùng!"
+            status_text.color = "red"
             page.update()
             return
         
-        updated_users = [user for user in users if user["email"] != selected_email]
-        save_users(updated_users)
-        status_text.value = f"Đã xóa người dùng: {selected_email}"
-        status_text.color = "green"
+        # Check if user is admin to prevent deletion
+        selected_user = next((user for user in users if user["email"] == selected_email), None)
+        if selected_user and selected_user.get("is_admin", False):
+            status_text.value = "Không thể xóa tài khoản administrator!"
+            status_text.color = "red"
+            page.update()
+            return
         
-        user_dropdown.options = [ft.dropdown.Option(user["email"]) for user in updated_users]
-        user_dropdown.value = None
+        # Delete user from database
+        if delete_user_from_db(selected_email):
+            status_text.value = f"Đã xóa người dùng: {selected_email}"
+            status_text.color = "green"
+            
+            # Refresh the dropdown with updated user list
+            updated_users = load_users()
+            user_dropdown.options = [ft.dropdown.Option(user["email"]) for user in updated_users]
+            user_dropdown.value = None
+        else:
+            status_text.value = "Lỗi khi xóa người dùng!"
+            status_text.color = "red"
+        
         page.update()
     
-    delete_button = ft.ElevatedButton("Xóa người dùng", on_click=delete_user)
-    back_button = ft.ElevatedButton("Quay lại", on_click=back_code)
+    def refresh_users(e):
+        """Refresh the user list from database"""
+        nonlocal users
+        users = load_users()
+        user_dropdown.options = [ft.dropdown.Option(user["email"]) for user in users]
+        user_dropdown.value = None
+        status_text.value = "Đã làm mới danh sách người dùng"
+        status_text.color = "blue"
+        page.update()
+    
+    delete_button = ft.ElevatedButton(
+        "Xóa người dùng", 
+        on_click=delete_user,
+        style=ft.ButtonStyle(
+            bgcolor="#DC3545",  # Red color for delete action
+            color="white"
+        )
+    )
+    
+    refresh_button = ft.ElevatedButton(
+        "Làm mới danh sách",
+        on_click=refresh_users,
+        style=ft.ButtonStyle(
+            bgcolor="#17A2B8",  # Blue color for refresh
+            color="white"
+        )
+    )
+    
+    back_button = ft.ElevatedButton(
+        "Quay lại", 
+        on_click=back_code,
+        style=ft.ButtonStyle(
+            bgcolor="#6C757D",  # Gray color for back
+            color="white"
+        )
+    )
 
-    page.add(ft.Text("Xoá User", size=20, color="white"), user_dropdown, delete_button, status_text, back_button)
+    # Create a centered layout
+    content = ft.Column([
+        ft.Text("Xoá User", size=24, weight="bold", color="white"),
+        ft.Container(height=20),
+        user_dropdown,
+        ft.Container(height=20),
+        ft.Row([
+            delete_button,
+            refresh_button
+        ], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
+        ft.Container(height=10),
+        status_text,
+        ft.Container(height=20),
+        back_button
+    ], 
+    alignment=ft.MainAxisAlignment.CENTER,
+    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+    spacing=10)
+
+    page.add(content)
 
 ft.app(target=main)
