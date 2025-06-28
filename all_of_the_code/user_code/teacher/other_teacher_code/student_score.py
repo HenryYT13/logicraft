@@ -347,7 +347,7 @@ def main(page: ft.Page):
     
     def back(e):
         page.window.close()
-        subprocess.run([sys.executable, "./user_code/teacher/teacher_main.py"])
+        subprocess.run([sys.executable, "user_code/teacher/teacher_main.py"])
     
     # Event handlers
     student_dropdown.on_change = refresh_scores

@@ -111,7 +111,7 @@ def main(page: ft.Page):
     
     def back_code(e):
         page.window.close()
-        subprocess.run([sys.executable, "administrator/administrator_main.py"])
+        subprocess.run([sys.executable, "user_code/teacher/teacher_main.py"])
     
     def delete_selected_question(e):
         if not subject_dropdown.value:
