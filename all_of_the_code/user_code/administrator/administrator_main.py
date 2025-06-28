@@ -27,7 +27,7 @@ def main(page: ft.Page):
         
     def promote_user(e):
         page.window.close()
-        subprocess.run([sys.executable, "administrator/other_admin_code/promote.py"])
+        subprocess.run([sys.executable, "administrator/other_admin_code/change_user_role.py"])
         
     def delete_user(e):
         page.window.close()
