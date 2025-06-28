@@ -6,6 +6,7 @@ import json
 import subprocess
 import sys
 import os
+import tempfile
 from supabase import create_client, Client
 from dotenv import load_dotenv
 import flet as ft
@@ -16,11 +17,25 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
+def read_current_user_id():
+    """Read the current user's UUID from the temp file created by login process."""
+    try:
+        temp_path = os.path.join(tempfile.gettempdir(), "logicraft_current_user_id")
+        if os.path.exists(temp_path):
+            with open(temp_path, "r", encoding="utf-8") as f:
+                user_id = f.read().strip()
+                return user_id if user_id else None
+        return None
+    except Exception as e:
+        print(f"Error reading current user ID: {e}")
+        return None
+
 async def main(page: ft.Page):
     page.title = "Logicraft"
     page.horizontal_alignment = "center"
     page.vertical_alignment = "center"
     page.scroll = "adaptive"
+    page.bgcolor = "#0F1115"  # Dark background
     page.data = {}  # Initialize page.data dictionary
     
     # Initialize sound variables
@@ -33,9 +48,14 @@ async def main(page: ft.Page):
     page.data["mixer_initialized"] = False
     page.data["is_muted"] = False  # Initialize mute state
     
-    # Get user ID from environment (set during login)
-    page.data["user_id"] = os.getenv("CURRENT_USER_ID")
-    print(f"Current user ID: {page.data['user_id']}")
+    # Get user ID from temp file (set during login)
+    page.data["user_id"] = read_current_user_id()
+    print(f"Current user ID from temp file: {page.data['user_id']}")
+    
+    # Fallback to environment variable if temp file doesn't exist
+    if not page.data["user_id"]:
+        page.data["user_id"] = os.getenv("CURRENT_USER_ID")
+        print(f"Fallback to environment variable: {page.data['user_id']}")
 
     def open_info(e):
         page.window.close()
@@ -121,8 +141,6 @@ async def main(page: ft.Page):
         page.window.close()
         subprocess.run([sys.executable, "./other_code/feedback.py"])
 
-    feedback_button = ft.ElevatedButton("Gửi feedback", on_click=lambda e: feedback(e))
-
     # Load sound effects when the app starts
     load_sound_effects()
 
@@ -190,65 +208,103 @@ async def main(page: ft.Page):
             print(f"Error fetching questions: {e}")
             return DEFAULT_QUESTIONS.get(subject_name, [])
 
+    # Create styled button function
+    def create_button(text, on_click, width=300, height=50, bgcolor="#3B71CA", color="white"):
+        return ft.ElevatedButton(
+            text,
+            on_click=on_click,
+            width=width,
+            height=height,
+            style=ft.ButtonStyle(
+                bgcolor=bgcolor,
+                color=color,
+                text_style=ft.TextStyle(weight="bold")
+            )
+        )
+
     # Tạo view chọn môn học
     def main_view():
         start_background_music()  # Start background music when main view is shown
         subjects = fetch_subjects()
         
-        return ft.Column(
+        # Header buttons with dark theme styling
+        header_buttons = ft.Row(
             [
-                ft.Row(
-                    [
-                        ft.Image(src="./assest/icon.png", height=100),
-                        ft.ElevatedButton(
-                            "Tắt âm thanh nền",
-                            on_click=toggle_music,
-                            width=150,
-                            height=40,
-                            bgcolor="red",
-                            color="white"
-                        ),
-                        ft.ElevatedButton(
-                            "Thông tin / Credit",
-                            on_click=open_info,
-                            width=150,
-                            height=40,
-                            bgcolor="blue",
-                            color="white"
-                        ),
-                        ft.ElevatedButton(
-                            "Gửi feedback",
-                            on_click=feedback,
-                            width=150,
-                            height=40,
-                            bgcolor="cyan",
-                            color="black"
-                        ),
-                        
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    width=400
+                create_button(
+                    "Tắt âm thanh nền",
+                    toggle_music,
+                    width=150,
+                    height=40,
+                    bgcolor="#DC3545"
                 ),
-                ft.Text("CHỌN MÔN HỌC", size=30, weight="bold"),
-                ft.Column(
-                    [ft.ElevatedButton(
-                        subject["name"],
-                        on_click=lambda e, s=subject: page.run_task(start_quiz, e, s),
-                        width=300,
-                        height=50
-                    ) for subject in subjects],
-                    spacing=10,
-                    alignment=ft.MainAxisAlignment.CENTER
-                )
+                create_button(
+                    "Thông tin / Credit",
+                    open_info,
+                    width=150,
+                    height=40,
+                    bgcolor="#007BFF"
+                ),
+                create_button(
+                    "Gửi feedback",
+                    feedback,
+                    width=150,
+                    height=40,
+                    bgcolor="#17A2B8"
+                ),
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            width=500
+        )
+
+        # Subject buttons with consistent styling
+        subject_buttons = ft.Column(
+            [create_button(
+                subject["name"],
+                lambda e, s=subject: page.run_task(start_quiz, e, s),
+                width=400,
+                height=60,
+                bgcolor="#161920"
+            ) for subject in subjects],
+            spacing=15,
+            alignment=ft.MainAxisAlignment.CENTER
+        )
+
+        # Display current user info if available
+        user_info = ft.Text("", size=14, color="#6C757D")
+        if page.data["user_id"]:
+            user_info.value = f"User ID: {page.data['user_id']}"
+
+        main_content = ft.Column(
+            [
+                ft.Container(
+                    content=ft.Image(src="./assest/icon.png", height=100),
+                    alignment=ft.alignment.center
+                ),
+                user_info,  # Add user info display
+                ft.Container(height=20),
+                header_buttons,
+                ft.Container(height=30),
+                ft.Text("CHỌN MÔN HỌC", size=32, weight="bold", color="white"),
+                ft.Container(height=20),
+                subject_buttons
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=30
+            spacing=10
+        )
+
+        # Scrollable container
+        return ft.ListView(
+            controls=[main_content],
+            expand=True,
+            spacing=10,
+            padding=ft.padding.all(20)
         )
 
     # Bắt đầu làm bài
     async def start_quiz(e, subject):
         page.data["current_subject"] = subject["name"]
+        page.data["current_subject_id"] = subject["id"]  # Store subject ID
         page.data["current_question_index"] = 0
         page.data["score"] = 0
         page.data["questions"] = await fetch_questions(subject["name"], subject["id"])
@@ -256,8 +312,8 @@ async def main(page: ft.Page):
         # Handle case where no questions are available
         if not page.data["questions"]:
             page.snack_bar = ft.SnackBar(
-                ft.Text(f"Không tìm thấy câu hỏi cho môn {subject['name']}!"),
-                bgcolor="red"
+                ft.Text(f"Không tìm thấy câu hỏi cho môn {subject['name']}!", color="white"),
+                bgcolor="#DC3545"
             )
             page.snack_bar.open = True
             page.update()
@@ -291,12 +347,14 @@ async def main(page: ft.Page):
                         if question["correct_answer"] == options.index(btn):
                             btn.style = ft.ButtonStyle(
                                 color="white",
-                                bgcolor="green"  # Highlight correct answer
+                                bgcolor="#28A745",  # Green for correct
+                                text_style=ft.TextStyle(weight="bold")
                             )
                         elif btn == e.control:
                             btn.style = ft.ButtonStyle(
                                 color="white",
-                                bgcolor="red"  # Highlight wrong answer if this was clicked
+                                bgcolor="#DC3545",  # Red for wrong
+                                text_style=ft.TextStyle(weight="bold")
                             )
                         btn.update()
 
@@ -305,7 +363,7 @@ async def main(page: ft.Page):
                         play_sound("correct")  # Play correct sound
                         page.snack_bar = ft.SnackBar(
                             content=ft.Text("Chính xác! 🎉", color="white"),
-                            bgcolor="green",
+                            bgcolor="#28A745",
                             duration=1000
                         )
                         page.snack_bar.open = True
@@ -313,7 +371,7 @@ async def main(page: ft.Page):
                         play_sound("wrong")  # Play wrong sound
                         page.snack_bar = ft.SnackBar(
                             content=ft.Text(f"Sai rồi! Đáp án đúng: {question['options'][question['correct_answer']]}", color="white"),
-                            bgcolor="red",
+                            bgcolor="#DC3545",
                             duration=1000
                         )
                         page.snack_bar.open = True
@@ -332,113 +390,178 @@ async def main(page: ft.Page):
                     await show_question()
 
             options.append(
-                ft.ElevatedButton(
+                create_button(
                     option,
-                    on_click=option_click,
-                    width=300,
-                    height=50,
-                    style=ft.ButtonStyle(
-                        color="white",
-                        bgcolor="#4a148c"
-                    )
+                    option_click,
+                    width=400,
+                    height=60,
+                    bgcolor="#161920"
                 )
             )
 
-        view = ft.Column(
+        # Header buttons for quiz view
+        quiz_header = ft.Row(
             [
-                ft.Row(
-                    [
-                        ft.ElevatedButton(
-                            "Tắt âm thanh nền" if not page.data["is_muted"] else "Bật âm thanh nền",
-                            on_click=toggle_music,
-                            width=150,
-                            height=40,
-                            bgcolor="red",
-                            color="white"
-                        ),
-                        ft.ElevatedButton(
-                            "Về màn hình chính",
-                            on_click=return_to_main,
-                            width=150,
-                            height=40,
-                            bgcolor="grey",
-                            color="white"
-                        ),
-                        ft.ElevatedButton(
-                            "Đăng xuất",
-                            on_click=logout,
-                            width=150,
-                            height=40,
-                            bgcolor="grey",
-                            color="white"
-                        )
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    width=400
+                create_button(
+                    "Tắt âm thanh nền" if not page.data["is_muted"] else "Bật âm thanh nền",
+                    toggle_music,
+                    width=150,
+                    height=40,
+                    bgcolor="#DC3545"
                 ),
-                ft.Text(f"Môn: {page.data['current_subject']}", size=20, weight="bold"),
-                ft.Text(f"Câu {current_index + 1}/{len(questions)}", italic=True),
-                ft.Text(question["question"], size=24, weight="bold"),
-                ft.Text(f"Điểm: {page.data['score']}", size=16),
-                *options
+                create_button(
+                    "Về màn hình chính",
+                    return_to_main,
+                    width=150,
+                    height=40,
+                    bgcolor="#6C757D"
+                ),
+                create_button(
+                    "Đăng xuất",
+                    logout,
+                    width=150,
+                    height=40,
+                    bgcolor="#6C757D"
+                )
             ],
-            spacing=30,
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            width=500
+        )
+
+        quiz_content = ft.Column(
+            [
+                quiz_header,
+                ft.Container(height=20),
+                ft.Text(f"Môn: {page.data['current_subject']}", size=20, weight="bold", color="white"),
+                ft.Text(f"Câu {current_index + 1}/{len(questions)}", size=16, italic=True, color="#6C757D"),
+                ft.Container(height=10),
+                ft.Container(
+                    content=ft.Text(question["question"], size=24, weight="bold", color="white", text_align="center"),
+                    padding=ft.padding.all(20),
+                    bgcolor="#161920",
+                    border_radius=10,
+                    width=500
+                ),
+                ft.Container(height=10),
+                ft.Text(f"Điểm: {page.data['score']}", size=18, weight="bold", color="#3B71CA"),
+                ft.Container(height=20),
+                ft.Column(
+                    options,
+                    spacing=15,
+                    alignment=ft.MainAxisAlignment.CENTER
+                )
+            ],
+            spacing=10,
             alignment=ft.MainAxisAlignment.CENTER,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
 
+        # Scrollable quiz view
+        quiz_view = ft.ListView(
+            controls=[quiz_content],
+            expand=True,
+            spacing=10,
+            padding=ft.padding.all(20)
+        )
+
         page.clean()
-        page.add(view)
+        page.add(quiz_view)
     
     # Hiển thị kết quả
     async def show_result():
         score = page.data["score"]
         total = len(page.data["questions"])
 
-        # Save score to database
+        # Save score to database with improved error handling
         try:
-            if supabase and page.data.get("user_id"):
-                # Get subject id
-                subj_res = supabase.table("subjects").select("id").eq("name", page.data["current_subject"]).single().execute()
-                if subj_res.data:
-                    subject_id = subj_res.data["id"]
-                    supabase.table("scores").upsert({
-                        "user_id": page.data["user_id"],
-                        "subject_id": subject_id,
-                        "score": score,
-                        "updated_at": "now()"  # let supabase server set timestamp
-                    }).execute()
+            if supabase and page.data.get("user_id") and page.data.get("current_subject_id"):
+                print(f"Saving score: user_id={page.data['user_id']}, subject_id={page.data['current_subject_id']}, score={score}")
+                
+                # Use the stored subject_id directly instead of querying by name
+                subject_id = page.data["current_subject_id"]
+                
+                # Upsert the score (insert or update if exists)
+                result = supabase.table("scores").upsert({
+                    "user_id": page.data["user_id"],
+                    "subject_id": subject_id,
+                    "score": score
+                }, on_conflict="user_id,subject_id").execute()
+                
+                print(f"Score saved successfully: {result.data}")
         except Exception as e:
             print(f"Error saving score: {e}")
+            # Show error message to user
+            page.snack_bar = ft.SnackBar(
+                content=ft.Text(f"Lỗi lưu điểm: {str(e)}", color="white"),
+                bgcolor="#DC3545",
+                duration=3000
+            )
+            page.snack_bar.open = True
 
         # Handle division by zero
         progress_value = score / total if total > 0 else 0
-        score = page.data["score"]
-        total = len(page.data["questions"])
-        
-        # Handle division by zero
-        progress_value = score / total if total > 0 else 0
+        percentage = int(progress_value * 100)
 
-        view = ft.Column(
+        # Determine result color based on performance
+        if percentage >= 80:
+            result_color = "#28A745"  # Green
+            result_text = "Xuất sắc! 🏆"
+        elif percentage >= 60:
+            result_color = "#FFC107"  # Yellow
+            result_text = "Tốt! 👍"
+        else:
+            result_color = "#DC3545"  # Red
+            result_text = "Cần cố gắng thêm! 💪"
+
+        result_content = ft.Column(
             [
-                ft.Text("KẾT THÚC BÀI THI", size=30, weight="bold"),
-                ft.Text(f"Bạn đã đúng {score}/{total} câu!", size=24),
-                ft.ProgressRing(width=100, height=100, value=progress_value),
-                ft.ElevatedButton(
+                ft.Text("KẾT THÚC BÀI THI", size=32, weight="bold", color="white"),
+                ft.Container(height=20),
+                ft.Container(
+                    content=ft.Column([
+                        ft.Text(result_text, size=24, weight="bold", color=result_color),
+                        ft.Text(f"Bạn đã đúng {score}/{total} câu!", size=20, color="white"),
+                        ft.Text(f"Điểm số: {percentage}%", size=18, color="#3B71CA")
+                    ], 
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                    padding=ft.padding.all(30),
+                    bgcolor="#161920",
+                    border_radius=15,
+                    width=400
+                ),
+                ft.Container(height=20),
+                ft.ProgressRing(
+                    width=120, 
+                    height=120, 
+                    value=progress_value,
+                    color=result_color,
+                    stroke_width=8
+                ),
+                ft.Container(height=30),
+                create_button(
                     "Về màn hình chính",
-                    on_click=return_to_main,
-                    color="white",
-                    bgcolor="grey"
+                    return_to_main,
+                    width=300,
+                    height=60,
+                    bgcolor="#6C757D"
                 )
-                
             ],
-            spacing=30,
+            spacing=15,
             alignment=ft.MainAxisAlignment.CENTER,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
+
+        # Scrollable result view
+        result_view = ft.ListView(
+            controls=[result_content],
+            expand=True,
+            spacing=10,
+            padding=ft.padding.all(20)
+        )
     
         page.clean()
-        page.add(view)
+        page.add(result_view)
 
     # Trở về màn hình chính
     async def return_to_main(e=None):
