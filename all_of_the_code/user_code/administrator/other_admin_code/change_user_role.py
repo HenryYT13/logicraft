@@ -118,7 +118,7 @@ def main(page: ft.Page):
     
     def back_code(e):
         page.window.close()
-        subprocess.run([sys.executable, "administrator/administrator_main.py"])
+        subprocess.run([sys.executable, "user_code/administrator/administrator_main.py"])
     
     def on_user_selected(e):
         """Update role dropdown when user is selected"""

@@ -83,9 +83,9 @@ def initialize_database():
                 "email": "student@logicraft.vn",
                 "username": "student",
                 "password": "student_password",
-                "admin": False,
-                "teacher": False,
-                "student": True
+                "is_admin": False,
+                "is_teacher": False,
+                "is_student": True
             }
         ]
         
@@ -129,9 +129,9 @@ def register_user(email, password):
             "email": email,
             "username": email,  # Use email as username
             "password": password,
-            "admin": False,
-            "teacher": False,
-            "student": True
+            "is_admin": False,
+            "is_teacher": False,
+            "is_student": True
         }
         insert_res = supabase.table("users").insert(new_user).execute()
         # Initialize score rows for the new user

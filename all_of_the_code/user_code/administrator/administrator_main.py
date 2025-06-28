@@ -19,23 +19,23 @@ def main(page: ft.Page):
         
     def create_question(e):
         page.window.close()
-        subprocess.run([sys.executable, "administrator/other_admin_code/create_question.py"])
+        subprocess.run([sys.executable, "user_code/administrator/other_admin_code/create_question.py"])
         
     def delete_question(e):
         page.window.close()
-        subprocess.run([sys.executable, "administrator/other_admin_code/delete_question.py"])    
+        subprocess.run([sys.executable, "user_code/administrator/other_admin_code/delete_question.py"])    
         
     def promote_user(e):
         page.window.close()
-        subprocess.run([sys.executable, "administrator/other_admin_code/change_user_role.py"])
+        subprocess.run([sys.executable, "user_code/administrator/other_admin_code/change_user_role.py"])
         
     def delete_user(e):
         page.window.close()
-        subprocess.run([sys.executable, "administrator/other_admin_code/delete_user.py"])
+        subprocess.run([sys.executable, "user_code/administrator/other_admin_code/delete_user.py"])
         
     def create_user(e):
         page.window.close()
-        subprocess.run([sys.executable, "administrator/other_admin_code/create_user.py"])
+        subprocess.run([sys.executable, "user_code/administrator/other_admin_code/create_user.py"])
         
     def feedback(e):
         page.window.close()
