@@ -32,25 +32,31 @@ def delete_user_from_db(user_email):
 
 def main(page: ft.Page):
     page.title = "Xóa người dùng"
+    page.window_width = 500
+    page.window_height = 400
+    page.window_resizable = False
+    page.bgcolor = "#0F1115"
     page.padding = 40
-    page.bgcolor = "#0F1115"  # Match the dark theme from login
     
     users = load_users()
+    
+    # UI Elements with consistent styling matching add user
     user_dropdown = ft.Dropdown(
-        options=[ft.dropdown.Option(user["email"]) for user in users],
         label="Chọn người dùng để xóa",
         width=300,
         bgcolor="#161920",
         color="white",
         border_color="#161920",
         focused_border_color="#3B71CA",
-        label_style=ft.TextStyle(color="#6C757D")
+        label_style=ft.TextStyle(color="#6C757D"),
+        options=[ft.dropdown.Option(user["email"]) for user in users]
     )
-    status_text = ft.Text("", color="red")
+    
+    status_text = ft.Text("", color="red", size=14)
     
     def back_code(e):
         page.window.close()
-        subprocess.run([sys.executable, "user_code/administrator/administrator_main.py"])
+        subprocess.run([sys.executable, "administrator/administrator_main.py"])
 
     def delete_user(e):
         selected_email = user_dropdown.value
@@ -96,8 +102,9 @@ def main(page: ft.Page):
     delete_button = ft.ElevatedButton(
         "Xóa người dùng", 
         on_click=delete_user,
+        width=300,
         style=ft.ButtonStyle(
-            bgcolor="#DC3545",  # Red color for delete action
+            bgcolor="#DC3545",
             color="white"
         )
     )
@@ -105,8 +112,9 @@ def main(page: ft.Page):
     refresh_button = ft.ElevatedButton(
         "Làm mới danh sách",
         on_click=refresh_users,
+        width=300,
         style=ft.ButtonStyle(
-            bgcolor="#17A2B8",  # Blue color for refresh
+            bgcolor="#17A2B8",
             color="white"
         )
     )
@@ -114,31 +122,40 @@ def main(page: ft.Page):
     back_button = ft.ElevatedButton(
         "Quay lại", 
         on_click=back_code,
+        width=300,
         style=ft.ButtonStyle(
-            bgcolor="#6C757D",  # Gray color for back
+            bgcolor="#6C757D",
             color="white"
         )
     )
 
-    # Create a centered layout
-    content = ft.Column([
-        ft.Text("Xoá User", size=24, weight="bold", color="white"),
-        ft.Container(height=20),
-        user_dropdown,
-        ft.Container(height=20),
-        ft.Row([
+    # Main layout matching add user structure
+    main_content = ft.Column(
+        [
+            ft.Text("Xóa User", size=24, weight="bold", color="white"),
+            ft.Container(height=20),
+            user_dropdown,
+            ft.Container(height=20),
             delete_button,
-            refresh_button
-        ], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
-        ft.Container(height=10),
-        status_text,
-        ft.Container(height=20),
-        back_button
-    ], 
-    alignment=ft.MainAxisAlignment.CENTER,
-    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-    spacing=10)
+            ft.Container(height=10),
+            refresh_button,
+            ft.Container(height=10),
+            status_text,
+            ft.Container(height=20),
+            back_button
+        ],
+        alignment=ft.MainAxisAlignment.CENTER,
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        spacing=5
+    )
 
-    page.add(content)
+    # Center the content
+    centered_container = ft.Container(
+        content=main_content,
+        alignment=ft.alignment.center,
+        expand=True
+    )
+
+    page.add(centered_container)
 
 ft.app(target=main)

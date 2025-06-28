@@ -56,8 +56,12 @@ def add_question_to_db(subject_id, question, options, correct_option_number):
         return False
 
 def main(page: ft.Page):
-    page.title = "Adding Question"
-    page.padding = 40  # Adding padding around the content
+    page.title = "Thêm câu hỏi"
+    page.window_width = 600
+    page.window_height = 700
+    page.window_resizable = False
+    page.bgcolor = "#0F1115"
+    page.padding = 40
    
     # Load subjects from database
     subjects_data = get_all_subjects()
@@ -66,42 +70,90 @@ def main(page: ft.Page):
     subject_dropdown = ft.Dropdown(
         options=[ft.dropdown.Option(subj) for subj in subjects],
         label="Chọn môn học",
-        width=300,
+        width=400,
+        bgcolor="#161920",
+        color="white",
+        border_color="#161920",
+        focused_border_color="#3B71CA",
+        label_style=ft.TextStyle(color="#6C757D")
     )
    
-    question_input = ft.TextField(label="Nhập câu hỏi", width=400)
-    answer_inputs = [ft.TextField(label=f"Đáp án {i+1}", width=200) for i in range(4)]
+    question_input = ft.TextField(
+        label="Nhập câu hỏi", 
+        width=400,
+        multiline=True,
+        min_lines=2,
+        max_lines=4,
+        bgcolor="#161920",
+        color="white",
+        border_color="#161920",
+        focused_border_color="#3B71CA",
+        label_style=ft.TextStyle(color="#6C757D")
+    )
+    
+    answer_inputs = []
+    for i in range(4):
+        answer_input = ft.TextField(
+            label=f"Đáp án {i+1}", 
+            width=400,
+            bgcolor="#161920",
+            color="white",
+            border_color="#161920",
+            focused_border_color="#3B71CA",
+            label_style=ft.TextStyle(color="#6C757D")
+        )
+        answer_inputs.append(answer_input)
+    
     correct_answer_dropdown = ft.Dropdown(
         options=[ft.dropdown.Option(str(i+1)) for i in range(4)],
         label="Chọn đáp án đúng",
-        width=300,
+        width=400,
+        bgcolor="#161920",
+        color="white",
+        border_color="#161920",
+        focused_border_color="#3B71CA",
+        label_style=ft.TextStyle(color="#6C757D")
     )
    
-    question_list = ft.Column()
-   
+    status_text = ft.Text("", color="green", size=14)
+    
     def back_code(e):
         page.window.close()
         subprocess.run([sys.executable, "administrator/administrator_main.py"])
         
     def add_question_handler(e):
         if not subject_dropdown.value or not question_input.value.strip():
-            print("Môn học hoặc câu hỏi không được để trống!")
+            status_text.value = "Môn học hoặc câu hỏi không được để trống!"
+            status_text.color = "red"
+            page.update()
             return
        
         answers = [inp.value.strip() for inp in answer_inputs]
         if not all(answers):
-            print("Tất cả các câu hỏi không được để trống!")
+            status_text.value = "Tất cả các câu hỏi không được để trống!"
+            status_text.color = "red"
+            page.update()
+            return
+       
+        if not correct_answer_dropdown.value:
+            status_text.value = "Vui lòng chọn đáp án đúng!"
+            status_text.color = "red"
+            page.update()
             return
        
         try:
             correct_index = int(correct_answer_dropdown.value) - 1
             if correct_index < 0 or correct_index >= len(answers):
-                print("Chọn đáp án đúng không hợp lệ!")
+                status_text.value = "Chọn đáp án đúng không hợp lệ!"
+                status_text.color = "red"
+                page.update()
                 return
             # Convert to 1-based numbering for database (1, 2, 3, 4)
             correct_option_number = correct_index + 1
         except (ValueError, TypeError):
-            print("Chọn đáp án đúng không hợp lệ!")
+            status_text.value = "Chọn đáp án đúng không hợp lệ!"
+            status_text.color = "red"
+            page.update()
             return
        
         # Find subject ID
@@ -111,7 +163,9 @@ def main(page: ft.Page):
         )
        
         if subject_id is None:
-            print("Môn học không tồn tại!")
+            status_text.value = "Môn học không tồn tại!"
+            status_text.color = "red"
+            page.update()
             return
        
         # Add to database using Supabase
@@ -123,37 +177,73 @@ def main(page: ft.Page):
         )
        
         if success:
-            question_entry = ft.Text(
-                f"{subject_dropdown.value}: {question_input.value} \n"
-                f"Đáp án: {', '.join(answers)} \nĐáp án đúng: {answers[correct_index]}"
-            )
-           
-            question_list.controls.append(question_entry)
-            page.update()
+            status_text.value = "Câu hỏi đã được thêm thành công!"
+            status_text.color = "green"
            
             # Clear form
             question_input.value = ""
             for inp in answer_inputs:
                 inp.value = ""
             correct_answer_dropdown.value = None
+            subject_dropdown.value = None
             page.update()
-            print("Câu hỏi đã được thêm thành công!")
         else:
-            print("Lỗi khi thêm câu hỏi vào cơ sở dữ liệu!")
+            status_text.value = "Lỗi khi thêm câu hỏi vào cơ sở dữ liệu!"
+            status_text.color = "red"
+            page.update()
    
-    submit_button = ft.ElevatedButton("Thêm câu hỏi", on_click=add_question_handler)
-    back_button = ft.ElevatedButton("Quay lại", on_click=lambda e: back_code(e))
-   
-    page.add(
-        ft.Text("Tạo câu hỏi", size=20, color="white"),
-        subject_dropdown,
-        question_input,
-        *answer_inputs,
-        correct_answer_dropdown,
-        submit_button,
-        question_list,
-        back_button
+    submit_button = ft.ElevatedButton(
+        "Thêm câu hỏi", 
+        on_click=add_question_handler,
+        width=400,
+        style=ft.ButtonStyle(
+            bgcolor="#28A745",  # Green color for add action
+            color="white"
+        )
     )
+    
+    back_button = ft.ElevatedButton(
+        "Quay lại", 
+        on_click=back_code,
+        width=400,
+        style=ft.ButtonStyle(
+            bgcolor="#6C757D",  # Gray color for back
+            color="white"
+        )
+    )
+
+    # Main layout - matching the delete question page structure
+    main_content = ft.Column(
+        [
+            ft.Text("Thêm Câu Hỏi", size=24, weight="bold", color="white"),
+            ft.Container(height=20),
+            subject_dropdown,
+            ft.Container(height=15),
+            question_input,
+            ft.Container(height=15),
+            *[ft.Container(content=inp, margin=ft.margin.only(bottom=10)) for inp in answer_inputs],
+            ft.Container(height=5),
+            correct_answer_dropdown,
+            ft.Container(height=15),
+            submit_button,
+            ft.Container(height=10),
+            status_text,
+            ft.Container(height=20),
+            back_button
+        ],
+        alignment=ft.MainAxisAlignment.CENTER,
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        spacing=5
+    )
+
+    # Center the content
+    centered_container = ft.Container(
+        content=main_content,
+        alignment=ft.alignment.center,
+        expand=True
+    )
+
+    page.add(centered_container)
 
 if __name__ == "__main__":
     ft.app(target=main)

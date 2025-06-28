@@ -160,143 +160,208 @@ def save_current_user_id(user_id: str):
     try:
         temp_path = os.path.join(tempfile.gettempdir(), "logicraft_current_user_id")
         with open(temp_path, "w", encoding="utf-8") as f:
-
             f.write(user_id)
     except Exception as e:
         print(f"Error saving current user ID: {e}")
 
-
-def toggle_password_visibility(e):
-    password_field.password = not password_field.password
-    password_field.update()
-    show_password_button.text = "Ẩn mật khẩu" if not password_field.password else "Hiển thị mật khẩu"
-    show_password_button.update()
-
-def login(e, page):
-    identifier = email_field.value.strip()
-    password = password_field.value.strip()
-    
-    user = authenticate(identifier, password)
-    if user:
-        # Save current user ID for downstream processes
-        env = os.environ.copy()
-        env["CURRENT_USER_ID"] = str(user.get("id"))
-        save_current_user_id(env["CURRENT_USER_ID"])
-
-        if user.get("is_admin"):
-            subprocess.Popen([sys.executable, os.path.join("user_code", "administrator", "administrator_main.py")], env=env)
-        elif user.get("is_teacher"):
-            subprocess.Popen([sys.executable, os.path.join("user_code", "teacher", "teacher_main.py")], env=env)
-        else:
-            subprocess.Popen([sys.executable, os.path.join("user_code", "student", "student_main.py")], env=env)
-        page.window.close()
-    else:
-        login_status.value = "Tài khoản hoặc mật khẩu không chính xác!"
-        login_status.update()
-
-def register(e, page):
-    email = email_field.value.strip()
-    password = password_field.value.strip()
-    
-    if register_user(email, password):
-        login_status.value = "Tài khoản đã được tạo thành công! Bạn có thể đăng nhập ngay bây giờ."
-        login_status.color = "green"
-    else:
-        login_status.value = "Email / Username đã tồn tại!"
-        login_status.color = "red"
-    login_status.update()
-
-# UI Elements
-email_field = ft.TextField(
-    label="E-mail / Username",
-    width=300,
-    bgcolor="#161920",
-    color="white",
-    border_color="#161920",
-    focused_border_color="#3B71CA",
-    label_style=ft.TextStyle(color="#6C757D")
-)
-
-password_field = ft.TextField(
-    label="Mật khẩu",
-    password=True,
-    width=300,
-    bgcolor="#161920",
-    color="white",
-    border_color="#161920",
-    focused_border_color="#3B71CA",
-    label_style=ft.TextStyle(color="#6C757D")
-)
-
-show_password_button = ft.TextButton(
-    "Hiển thị mật khẩu",
-    on_click=toggle_password_visibility,
-    style=ft.ButtonStyle(color="#3B71CA")
-)
-
-login_status = ft.Text(color="red", size=14)
+# Create styled button function to match quiz app
+def create_button(text, on_click, width=400, height=60, bgcolor="#3B71CA", color="white"):
+    return ft.ElevatedButton(
+        text,
+        on_click=on_click,
+        width=width,
+        height=height,
+        style=ft.ButtonStyle(
+            bgcolor=bgcolor,
+            color=color,
+            text_style=ft.TextStyle(weight="bold")
+        )
+    )
 
 def main(page: ft.Page):
     page.title = "Logicraft Đăng nhập"
-    page.window_width = 500
-    page.window_height = 600
+    page.window_width = 600
+    page.window_height = 700
     page.window_resizable = False
-    page.bgcolor = "#0F1115"
+    page.bgcolor = "#0F1115"  # Match quiz app background
     page.padding = 0
-    
-    login_button = ft.ElevatedButton(
-        "Đăng nhập",
-        width=300,
-        on_click=lambda e: login(e, page),
+    page.horizontal_alignment = "center"
+    page.vertical_alignment = "center"
+    page.scroll = "adaptive"
+
+    # UI Elements with matching styling
+    email_field = ft.TextField(
+        label="E-mail / Username",
+        width=400,
+        height=60,
+        bgcolor="#161920",
+        color="white",
+        border_color="#161920",
+        focused_border_color="#3B71CA",
+        label_style=ft.TextStyle(color="#6C757D"),
+        text_style=ft.TextStyle(size=16)
+    )
+
+    password_field = ft.TextField(
+        label="Mật khẩu",
+        password=True,
+        width=400,
+        height=60,
+        bgcolor="#161920",
+        color="white",
+        border_color="#161920",
+        focused_border_color="#3B71CA",
+        label_style=ft.TextStyle(color="#6C757D"),
+        text_style=ft.TextStyle(size=16)
+    )
+
+    def toggle_password_visibility(e):
+        password_field.password = not password_field.password
+        password_field.update()
+        show_password_button.text = "Ẩn mật khẩu" if not password_field.password else "Hiển thị mật khẩu"
+        show_password_button.update()
+
+    show_password_button = ft.TextButton(
+        "Hiển thị mật khẩu",
+        on_click=toggle_password_visibility,
         style=ft.ButtonStyle(
-            bgcolor="#3B71CA",
-            color="white"
+            color="#3B71CA",
+            text_style=ft.TextStyle(size=14)
         )
     )
-    
-    register_button = ft.TextButton(
-        "Đăng ký tài khoản (nhập vào trên)",
-        on_click=lambda e: register(e, page),
-        style=ft.ButtonStyle(color="#3B71CA")
+
+    login_status = ft.Text(
+        "",
+        color="#DC3545",
+        size=16,
+        weight="bold",
+        text_align="center"
     )
+
+    def login(e):
+        identifier = email_field.value.strip()
+        password = password_field.value.strip()
+        
+        user = authenticate(identifier, password)
+        if user:
+            # Save current user ID for downstream processes
+            env = os.environ.copy()
+            env["CURRENT_USER_ID"] = str(user.get("id"))
+            save_current_user_id(env["CURRENT_USER_ID"])
+
+            if user.get("is_admin"):
+                subprocess.Popen([sys.executable, os.path.join("user_code", "administrator", "administrator_main.py")], env=env)
+            elif user.get("is_teacher"):
+                subprocess.Popen([sys.executable, os.path.join("user_code", "teacher", "teacher_main.py")], env=env)
+            else:
+                subprocess.Popen([sys.executable, os.path.join("user_code", "student", "student_main.py")], env=env)
+            page.window.close()
+        else:
+            login_status.value = "Tài khoản hoặc mật khẩu không chính xác!"
+            login_status.color = "#DC3545"
+            login_status.update()
+
+    def register(e):
+        email = email_field.value.strip()
+        password = password_field.value.strip()
+        
+        if register_user(email, password):
+            login_status.value = "Tài khoản đã được tạo thành công! Bạn có thể đăng nhập ngay bây giờ."
+            login_status.color = "#28A745"
+        else:
+            login_status.value = "Email / Username đã tồn tại!"
+            login_status.color = "#DC3545"
+        login_status.update()
 
     def feedback(e):
         page.window.close()
         subprocess.run([sys.executable, "other_code/feedback.py"])
 
-    feedback_button = ft.ElevatedButton("Gửi feedback", on_click=lambda e: feedback(e))
-    
-    login_view = ft.Column(
+    # Main login content with matching layout
+    login_content = ft.Column(
         [
-            ft.Image(src="./assest/icon.png", height=100),
-            ft.Text(
-                "Đăng nhập vào Logicraft",
-                size=24,
-                weight="bold",
-                color="white"
+            # Logo section
+            ft.Container(
+                content=ft.Image(src="./assest/icon.png", height=120),
+                alignment=ft.alignment.center
             ),
-            ft.Container(height=40),
-            email_field,
-            ft.Container(height=15),
-            password_field,
-            show_password_button,
-            ft.Container(height=5),
-            login_button,
-            register_button,
+            ft.Container(height=20),
+            
+            # Title
+            ft.Text(
+                "ĐĂNG NHẬP VÀO LOGICRAFT",
+                size=32,
+                weight="bold",
+                color="white",
+                text_align="center"
+            ),
+            ft.Container(height=30),
+            
+            # Input fields container
+            ft.Container(
+                content=ft.Column([
+                    email_field,
+                    ft.Container(height=15),
+                    password_field,
+                    show_password_button,
+                ], 
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                padding=ft.padding.all(20),
+                bgcolor="#161920",
+                border_radius=15,
+                width=500
+            ),
+            
+            ft.Container(height=20),
+            
+            # Status message
             login_status,
-            feedback_button
+            ft.Container(height=10),
+            
+            # Action buttons
+            create_button(
+                "ĐĂNG NHẬP",
+                login,
+                width=400,
+                height=60,
+                bgcolor="#3B71CA"
+            ),
+            
+            ft.Container(height=10),
+            
+            create_button(
+                "ĐĂNG KÝ TÀI KHOẢN",
+                register,
+                width=400,
+                height=60,
+                bgcolor="#28A745"
+            ),
+            
+            ft.Container(height=20),
+            
+            # Feedback button
+            create_button(
+                "GỬI FEEDBACK",
+                feedback,
+                width=300,
+                height=50,
+                bgcolor="#17A2B8"
+            )
         ],
         alignment=ft.MainAxisAlignment.CENTER,
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-        spacing=5
+        spacing=10
     )
 
-    centered_container = ft.Container(
-        content=login_view,
-        alignment=ft.alignment.center,
-        expand=True
+    # Scrollable container to match quiz app
+    login_view = ft.ListView(
+        controls=[login_content],
+        expand=True,
+        spacing=10,
+        padding=ft.padding.all(20)
     )
 
-    page.add(centered_container)
+    page.add(login_view)
 
 ft.app(target=main)

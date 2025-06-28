@@ -375,7 +375,7 @@ def main(page: ft.Page):
     main_content = ft.Column([
         # Header with logo
         ft.Container(
-            content=ft.Image(src="./assest/icon.png", height=80),
+            content=ft.Image(src="./assest/icon.png", height=100),
             alignment=ft.alignment.center
         ),
         ft.Container(height=10),

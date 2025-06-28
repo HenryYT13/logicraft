@@ -1,5 +1,5 @@
-import flet as ft 
-import subprocess 
+import flet as ft
+import subprocess
 import sys
 
 def feedback(e, page):
@@ -8,79 +8,135 @@ def feedback(e, page):
 
 def main(page: ft.Page):
     page.title = "Logicraft - Credits"
-    # Title
-    title = ft.Text("Logicraft", size=32, weight="bold", color="#4CAF50")
-    subtitle = ft.Text("Một ứng dụng trả lời câu hỏi từ Lớp 1 ====> Lớp 6", size=18, color="#666666")
+    page.horizontal_alignment = "center"
+    page.vertical_alignment = "center"
+    page.scroll = "adaptive"
+    page.bgcolor = "#0F1115"  # Dark background matching quiz app
+    page.window_width = 600
+    page.window_height = 700
+    page.padding = 20
 
-    # Credits Section
-    credits_title = ft.Text("Credits / Thông tin", size=24, weight="bold", color="#2196F3")
-
-    # Development Team
-    team_section = ft.Column([
-        ft.Text("Bộ phận phát triển", size=20, weight="bold", color="#FF5722"),
-        ft.Text("Người tạo ra:", size=16),
-        ft.Text("10th01 (Henry Khuong) (Khương Hữu Minh Quân)", size=18, weight="bold", color="#4CAF50"),
-        ft.Text("Email: 10th01_main_account@proton.me", size=18, weight="bold", color="#4CAF50"),
-        ft.Text("Số điện thoại: +84 876 039 564", size=18, weight="bold", color="#4CAF50"),
-        ft.Text("Thông tin: henryyt13.github.io", size=18, weight="bold", color="#4CAF50"),
-        ft.Text("Vai trò: Phát triển", size=14, color="#666666"),
-    ], spacing=10)
-
-    # Features Section
-    features_section = ft.Column([
-        ft.Text("Tính năng", size=20, weight="bold", color="#FF5722"),
-        ft.Text("• Nhiều chủ đề môn học", size=16),
-        ft.Text("• Giao diện trả lời câu hỏi", size=16),
-        ft.Text("• Hệ thống đếm giờ", size=16),
-        ft.Text("• Theo dõi điểm số", size=16),
-        ft.Text("• Âm thanh", size=16),
-    ], spacing=10)
-
-    # Back Button
-    back_button = ft.ElevatedButton(
-        "Trở về trang chính",
-        on_click=lambda e: [page.window.close(), subprocess.Popen([sys.executable, "other_code/main_windows.py"])],
-        style=ft.ButtonStyle(
-            color=ft.Colors.WHITE,
-            bgcolor=ft.Colors.BLUE,
-            padding=20,
-            shape=ft.RoundedRectangleBorder(radius=10)
+    # Create styled button function matching quiz app
+    def create_button(text, on_click, width=300, height=50, bgcolor="#3B71CA", color="white"):
+        return ft.ElevatedButton(
+            text,
+            on_click=on_click,
+            width=width,
+            height=height,
+            style=ft.ButtonStyle(
+                bgcolor=bgcolor,
+                color=color,
+                text_style=ft.TextStyle(weight="bold")
+            )
         )
-    )   
 
-    # Feedback Button
-    feedback_button = ft.ElevatedButton(
-        "Gửi feedback",
-        on_click=lambda e: feedback(e, page),
-        style=ft.ButtonStyle(
-            color=ft.Colors.WHITE,
-            bgcolor=ft.Colors.BLUE,
-            padding=20,
-            shape=ft.RoundedRectangleBorder(radius=10)
-        )
+    # Header with app icon
+    header = ft.Container(
+        content=ft.Image(src="./assest/icon.png", height=100),
+        alignment=ft.alignment.center
     )
 
-    # Main Content
-    content = ft.Column(
+    # Title matching quiz app style
+    title = ft.Text("LOGICRAFT", size=32, weight="bold", color="white")
+    subtitle = ft.Text("Một ứng dụng trả lời câu hỏi từ Lớp 1 ====> Lớp 6", 
+                      size=16, color="#6C757D", text_align="center")
+
+    # Credits section with dark theme containers
+    credits_title = ft.Text("THÔNG TIN / CREDITS", size=24, weight="bold", color="white")
+
+    # Development team section in a dark container
+    team_container = ft.Container(
+        content=ft.Column([
+            ft.Text("BỘ PHẬN PHÁT TRIỂN", size=18, weight="bold", color="#3B71CA"),
+            ft.Container(height=10),
+            ft.Text("Người tạo ra:", size=14, color="#6C757D"),
+            ft.Text("10th01 (Henry Khuong)", size=16, weight="bold", color="white"),
+            ft.Text("(Khương Hữu Minh Quân)", size=16, weight="bold", color="white"),
+            ft.Container(height=5),
+            ft.Text("Email: 10th01_main_account@proton.me", size=14, color="#6C757D"),
+            ft.Text("Số điện thoại: +84 876 039 564", size=14, color="#6C757D"),
+            ft.Text("Thông tin: henryyt13.github.io", size=14, color="#6C757D"),
+            ft.Container(height=5),
+            ft.Text("Vai trò: Phát triển", size=14, color="#17A2B8"),
+        ], 
+        spacing=8,
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+        padding=ft.padding.all(20),
+        bgcolor="#161920",
+        border_radius=10,
+        width=500
+    )
+
+    # Features section in a dark container
+    features_container = ft.Container(
+        content=ft.Column([
+            ft.Text("TÍNH NĂNG", size=18, weight="bold", color="#3B71CA"),
+            ft.Container(height=10),
+            ft.Text("• Nhiều chủ đề môn học", size=14, color="white"),
+            ft.Text("• Giao diện trả lời câu hỏi", size=14, color="white"),
+            ft.Text("• Hệ thống đếm giờ", size=14, color="white"),
+            ft.Text("• Theo dõi điểm số", size=14, color="white"),
+            ft.Text("• Âm thanh nền và hiệu ứng", size=14, color="white"),
+            ft.Text("• Lưu trữ dữ liệu người dùng", size=14, color="white"),
+        ], 
+        spacing=8,
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+        padding=ft.padding.all(20),
+        bgcolor="#161920",
+        border_radius=10,
+        width=500
+    )
+
+    # Action buttons
+    button_row = ft.Row([
+        create_button(
+            "Trở về trang chính",
+            lambda e: [page.window.close(), subprocess.Popen([sys.executable, "other_code/main_windows.py"])],
+            width=200,
+            height=50,
+            bgcolor="#6C757D"
+        ),
+        create_button(
+            "Gửi feedback",
+            lambda e: feedback(e, page),
+            width=200,
+            height=50,
+            bgcolor="#17A2B8"
+        )
+    ],
+    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+    width=450)
+
+    # Main content
+    main_content = ft.Column(
         [
-            ft.Image(src="./assest/icon.png", height=100),
+            header,
+            ft.Container(height=10),
             title,
             subtitle,
-            ft.Divider(color="#E0E0E0", thickness=2),
+            ft.Container(height=20),
             credits_title,
-            ft.Divider(color="#E0E0E0", thickness=1),
-            team_section,
-            ft.Divider(color="#E0E0E0", thickness=1),
-            features_section,
-            ft.Divider(color="#E0E0E0", thickness=1),
-            back_button,
-            feedback_button
+            ft.Container(height=15),
+            team_container,
+            ft.Container(height=15),
+            features_container,
+            ft.Container(height=20),
+            button_row
         ],
-        spacing=20,
+        spacing=10,
+        alignment=ft.MainAxisAlignment.CENTER,
         horizontal_alignment=ft.CrossAxisAlignment.CENTER
     )
 
-    page.add(content)
+    # Scrollable container
+    page.add(
+        ft.ListView(
+            controls=[main_content],
+            expand=True,
+            spacing=10,
+            padding=ft.padding.all(20)
+        )
+    )
 
 if __name__ == "__main__":
     ft.app(target=main)
